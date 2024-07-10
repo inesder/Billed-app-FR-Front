@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 
-import {screen, waitFor} from "@testing-library/dom"
+import {screen, waitFor, fireEvent } from "@testing-library/dom"
 import BillsUI from "../views/BillsUI.js"
 import { bills } from "../fixtures/bills.js"
 import { ROUTES_PATH} from "../constants/routes.js";
@@ -26,7 +26,8 @@ describe("Given I am connected as an employee", () => {
       await waitFor(() => screen.getByTestId('icon-window'))
       const windowIcon = screen.getByTestId('icon-window')
       //to-do write expect expression
-
+      const windowClass = windowIcon.classList
+      expect(windowClass).toContain('active-icon')
     })
     test("Then bills should be ordered from earliest to latest", () => {
       document.body.innerHTML = BillsUI({ data: bills })
@@ -38,4 +39,42 @@ describe("Given I am connected as an employee", () => {
       expect(dates).toEqual(datesSorted)
     })
   })
+  describe("When I click on the icon eye", () => {
+    test("Then the bill image should appear in a modal", async () => {
+      // DOM
+      document.body.innerHTML = BillsUI({ data: bills })
+
+      // Simuler la configuration du localStorage et de la navigation
+      Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+      window.localStorage.setItem('user', JSON.stringify({
+        type: 'Employee'
+      }))
+      
+      // Naviguer vers la page Bills
+      window.onNavigate(ROUTES_PATH.Bills)
+
+      // Simulation de la fonction modal
+      $.fn.modal = jest.fn()
+
+      //Récupérer l'élément icon-eye
+      const iconEye = screen.getAllByTestId('icon-eye')[0]
+
+      // Simuler le clic sur eyeIcon
+      fireEvent.click(iconEye)
+
+      // Vérifier que la modale s'ouvre et affiche l'image
+      await waitFor(() => {
+        const modal = document.getElementById('modaleFile')
+        expect(modal).toBeTruthy()
+        expect($.fn.modal).toHaveBeenCalled()
+
+        const modalBody = modal.querySelector('.modal-body')
+        const img = modalBody.querySelector('img')
+        expect(img).toBeTruthy();
+        expect(img.getAttribute('src')).toBe(bills[0].fileUrl)
+      })
+      
+    })
+  })
 })
+
